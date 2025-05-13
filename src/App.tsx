@@ -1,29 +1,27 @@
-import React, {
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-  Fragment,
-  ChangeEvent,
-  KeyboardEvent,
-  DragEvent,
-} from "react";
-import JSZip from "jszip";
-import { ID3Writer } from "browser-id3-writer";
-import FileRow, { FileItem } from "./components/FileRow";
 import {
   Button,
-  TextField,
-  Image,
+  Content,
+  DropZone,
+  FileTrigger,
   Flex,
   Heading,
-  View,
-  Text,
-  DropZone,
   IllustratedMessage,
-  Content,
-  FileTrigger,
+  Image,
+  Text,
+  TextField,
+  View,
 } from "@adobe/react-spectrum";
+import { ID3Writer } from "browser-id3-writer";
+import JSZip from "jszip";
+import type React from "react";
+import {
+  type DragEvent,
+  Fragment,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import FileRow, { type FileItem } from "./components/FileRow";
 
 const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
@@ -36,9 +34,6 @@ const App: React.FC = () => {
   const [artwork, setArtwork] = useState<File | null>(null);
   const [artworkUrl, setArtworkUrl] = useState<string>("");
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropAreaRef = useRef<HTMLButtonElement>(null);
-  const artworkInputRef = useRef<HTMLInputElement>(null);
   // audioプレビューURL管理
   const [audioUrls, setAudioUrls] = useState<{ [key: string]: string }>({});
 
@@ -60,39 +55,8 @@ const App: React.FC = () => {
           title: getBaseName(file.name),
         }));
       setFiles((prev) => [...prev, ...newFiles]);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [files]
-  );
-
-  // ドラッグ＆ドロップ
-  const onDrop = useCallback(
-    (e: React.DragEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dropAreaRef.current?.classList.remove("dragover");
-      handleFiles(e.dataTransfer.files);
-    },
-    [handleFiles]
-  );
-  const onDragOver = useCallback((e: React.DragEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropAreaRef.current?.classList.add("dragover");
-  }, []);
-  const onDragLeave = useCallback((e: React.DragEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropAreaRef.current?.classList.remove("dragover");
-  }, []);
-  const onDropAreaKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLButtonElement>) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        fileInputRef.current?.click();
-      }
-    },
-    []
   );
 
   // 除外
@@ -132,47 +96,33 @@ const App: React.FC = () => {
   );
   const handleDragEnd = useCallback(() => setDragIndex(null), []);
 
-  // アートワーク画像選択時の処理
-  const handleArtworkChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0] || null;
-      setArtwork(file);
-    },
-    []
-  );
-
   // プレビュー用URL管理
   useEffect(() => {
     if (artwork) {
       const url = URL.createObjectURL(artwork);
       setArtworkUrl(url);
       return () => URL.revokeObjectURL(url);
-    } else {
-      setArtworkUrl("");
     }
+    setArtworkUrl("");
   }, [artwork]);
 
   // audioプレビューURL管理
   useEffect(() => {
     const newUrls: { [key: string]: string } = {};
-    files.forEach((item) => {
+    for (const item of files) {
       const key = `${item.file.name}-${item.file.size}`;
       if (!audioUrls[key]) {
         newUrls[key] = URL.createObjectURL(item.file);
       } else {
         newUrls[key] = audioUrls[key];
       }
-    });
-    // 古いURLをrevoke
-    Object.keys(audioUrls).forEach((key) => {
-      if (
-        !files.some((item) => `${item.file.name}-${item.file.size}` === key)
-      ) {
-        URL.revokeObjectURL(audioUrls[key]);
-      }
-    });
+    }
     setAudioUrls(newUrls);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      for (const key of Object.keys(newUrls)) {
+        URL.revokeObjectURL(newUrls[key]);
+      }
+    };
   }, [files]);
 
   // タグ付与＆一括ダウンロード
