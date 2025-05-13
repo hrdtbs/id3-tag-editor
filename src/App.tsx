@@ -1,12 +1,18 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  Fragment,
+  ChangeEvent,
+  KeyboardEvent,
+  DragEvent,
+} from "react";
 import JSZip from "jszip";
 import { ID3Writer } from "browser-id3-writer";
+import FileRow, { FileItem } from "./components/FileRow";
 
-interface FileItem {
-  file: File;
-  excluded: boolean;
-  title: string;
-}
+const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
 const App: React.FC = () => {
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -16,79 +22,114 @@ const App: React.FC = () => {
   const [year, setYear] = useState(() => String(new Date().getFullYear()));
   const [artwork, setArtwork] = useState<File | null>(null);
   const [artworkUrl, setArtworkUrl] = useState<string>("");
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropAreaRef = useRef<HTMLButtonElement>(null);
   const artworkInputRef = useRef<HTMLInputElement>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  // ファイル名から拡張子を除去する関数
-  const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
+  // audioプレビューURL管理
+  const [audioUrls, setAudioUrls] = useState<{ [key: string]: string }>({});
 
   // ファイル追加
-  const handleFiles = (selectedFiles: FileList | null) => {
-    if (!selectedFiles) return;
-    const newFiles = Array.from(selectedFiles)
-      .filter(
-        (file) =>
-          (file.type === "audio/mp3" || file.type === "audio/mpeg") &&
-          !files.some(
-            (f) => f.file.name === file.name && f.file.size === file.size
-          )
-      )
-      .map((file) => ({
-        file,
-        excluded: false,
-        title: getBaseName(file.name),
-      }));
-    setFiles((prev) => [...prev, ...newFiles]);
-  };
+  const handleFiles = useCallback(
+    (selectedFiles: FileList | null) => {
+      if (!selectedFiles) return;
+      const newFiles = Array.from(selectedFiles)
+        .filter(
+          (file) =>
+            (file.type === "audio/mp3" || file.type === "audio/mpeg") &&
+            !files.some(
+              (f) => f.file.name === file.name && f.file.size === file.size
+            )
+        )
+        .map((file) => ({
+          file,
+          excluded: false,
+          title: getBaseName(file.name),
+        }));
+      setFiles((prev) => [...prev, ...newFiles]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [files]
+  );
 
   // ドラッグ＆ドロップ
-  const onDrop = (e: React.DragEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropAreaRef.current?.classList.remove("dragover");
-    handleFiles(e.dataTransfer.files);
-  };
-  const onDragOver = (e: React.DragEvent<HTMLButtonElement>) => {
+  const onDrop = useCallback(
+    (e: React.DragEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropAreaRef.current?.classList.remove("dragover");
+      handleFiles(e.dataTransfer.files);
+    },
+    [handleFiles]
+  );
+  const onDragOver = useCallback((e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     dropAreaRef.current?.classList.add("dragover");
-  };
-  const onDragLeave = (e: React.DragEvent<HTMLButtonElement>) => {
+  }, []);
+  const onDragLeave = useCallback((e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
     dropAreaRef.current?.classList.remove("dragover");
-  };
-  const onDropAreaKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fileInputRef.current?.click();
-    }
-  };
+  }, []);
+  const onDropAreaKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        fileInputRef.current?.click();
+      }
+    },
+    []
+  );
 
   // 除外
-  const excludeFile = (idx: number) => {
+  const excludeFile = useCallback((idx: number) => {
     setFiles((prev) =>
       prev.map((f, i) => (i === idx ? { ...f, excluded: true } : f))
     );
-  };
+  }, []);
 
   // 曲名編集
-  const editTitle = (idx: number, value: string) => {
+  const editTitle = useCallback((idx: number, value: string) => {
     setFiles((prev) =>
       prev.map((f, i) => (i === idx ? { ...f, title: value } : f))
     );
-  };
+  }, []);
+
+  // 並び替えロジック
+  const handleDragStart = useCallback((idx: number) => setDragIndex(idx), []);
+  const handleDragOver = useCallback(
+    (idx: number, e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      if (dragIndex === null || dragIndex === idx) return;
+      setFiles((prev) => {
+        const arr = [...prev];
+        const activeList = arr.filter((f) => !f.excluded);
+        const dragItem = activeList[dragIndex];
+        const dropItem = activeList[idx];
+        const dragGlobalIdx = arr.findIndex((f) => f === dragItem);
+        const dropGlobalIdx = arr.findIndex((f) => f === dropItem);
+        arr.splice(dragGlobalIdx, 1);
+        arr.splice(dropGlobalIdx, 0, dragItem);
+        return arr;
+      });
+      setDragIndex(idx);
+    },
+    [dragIndex]
+  );
+  const handleDragEnd = useCallback(() => setDragIndex(null), []);
 
   // アートワーク画像選択時の処理
-  const handleArtworkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setArtwork(file);
-  };
+  const handleArtworkChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null;
+      setArtwork(file);
+    },
+    []
+  );
 
   // プレビュー用URL管理
-  React.useEffect(() => {
+  useEffect(() => {
     if (artwork) {
       const url = URL.createObjectURL(artwork);
       setArtworkUrl(url);
@@ -98,8 +139,31 @@ const App: React.FC = () => {
     }
   }, [artwork]);
 
+  // audioプレビューURL管理
+  useEffect(() => {
+    const newUrls: { [key: string]: string } = {};
+    files.forEach((item) => {
+      const key = `${item.file.name}-${item.file.size}`;
+      if (!audioUrls[key]) {
+        newUrls[key] = URL.createObjectURL(item.file);
+      } else {
+        newUrls[key] = audioUrls[key];
+      }
+    });
+    // 古いURLをrevoke
+    Object.keys(audioUrls).forEach((key) => {
+      if (
+        !files.some((item) => `${item.file.name}-${item.file.size}` === key)
+      ) {
+        URL.revokeObjectURL(audioUrls[key]);
+      }
+    });
+    setAudioUrls(newUrls);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
+
   // タグ付与＆一括ダウンロード
-  const processFiles = async () => {
+  const processFiles = useCallback(async () => {
     const zip = new JSZip();
     let trackNo = 1;
     let artworkBuffer: ArrayBuffer | null = null;
@@ -119,7 +183,7 @@ const App: React.FC = () => {
       writer.setFrame("TRCK", String(trackNo));
       if (artwork && artworkBuffer) {
         writer.setFrame("APIC", {
-          type: 3, // Cover(front)
+          type: 3,
           data: artworkBuffer,
           description: artwork.name,
         });
@@ -134,47 +198,9 @@ const App: React.FC = () => {
     a.href = URL.createObjectURL(content);
     a.download = "tagged_mp3s.zip";
     a.click();
-  };
+  }, [files, artist, album, genre, year, artwork]);
 
   const activeFiles = files.filter((f) => !f.excluded);
-
-  // ファイルごとにURLを生成し、不要になったらrevoke
-  const audioUrls = useMemo(() => {
-    const urls: { [key: string]: string } = {};
-    activeFiles.forEach((item) => {
-      urls[`${item.file.name}-${item.file.size}`] = URL.createObjectURL(
-        item.file
-      );
-    });
-    return urls;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFiles.map((f) => f.file.name + f.file.size).join(",")]);
-
-  React.useEffect(() => {
-    return () => {
-      Object.values(audioUrls).forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [audioUrls]);
-
-  // 並び替えロジック
-  const handleDragStart = (idx: number) => setDragIndex(idx);
-  const handleDragOver = (idx: number) => {
-    if (dragIndex === null || dragIndex === idx) return;
-    setFiles((prev) => {
-      const arr = [...prev];
-      const activeList = arr.filter((f) => !f.excluded);
-      const dragItem = activeList[dragIndex];
-      const dropItem = activeList[idx];
-      // グローバルindex取得
-      const dragGlobalIdx = arr.findIndex((f) => f === dragItem);
-      const dropGlobalIdx = arr.findIndex((f) => f === dropItem);
-      arr.splice(dragGlobalIdx, 1);
-      arr.splice(dropGlobalIdx, 0, dragItem);
-      return arr;
-    });
-    setDragIndex(idx);
-  };
-  const handleDragEnd = () => setDragIndex(null);
 
   return (
     <div className="container">
@@ -280,51 +306,33 @@ const App: React.FC = () => {
             ファイルが選択されていません
           </p>
         ) : (
-          activeFiles.map((item, idx) => (
-            <div
-              className="file-item"
-              key={`${item.file.name}-${item.file.size}`}
-              draggable
-              onDragStart={() => handleDragStart(idx)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                handleDragOver(idx);
-              }}
-              onDrop={handleDragEnd}
-              onDragEnd={handleDragEnd}
-              style={{ opacity: dragIndex === idx ? 0.5 : 1, cursor: "move" }}
-            >
-              <span className="track-no">{idx + 1}</span>
-              <span className="file-name">{item.file.name}</span>
-              <input
-                className="song-title-input"
-                type="text"
-                value={item.title}
-                onChange={(e) =>
+          <Fragment>
+            {activeFiles.map((item, idx) => (
+              <FileRow
+                key={`${item.file.name}-${item.file.size}`}
+                item={item}
+                idx={idx}
+                total={activeFiles.length}
+                audioUrl={audioUrls[`${item.file.name}-${item.file.size}`]}
+                onTitleChange={(i, v) =>
                   editTitle(
                     files.findIndex((f) => f === item),
-                    e.target.value
+                    v
                   )
                 }
-                placeholder="曲名"
-                aria-label={`曲名（${item.file.name}）`}
+                onExclude={(i) =>
+                  excludeFile(files.findIndex((f) => f === item))
+                }
+                onDragStart={handleDragStart}
+                onDragOver={(i, e) =>
+                  handleDragOver(i, e as unknown as DragEvent<HTMLDivElement>)
+                }
+                onDrop={handleDragEnd}
+                onDragEnd={handleDragEnd}
+                isDragging={dragIndex === idx}
               />
-              <audio
-                controls
-                src={audioUrls[`${item.file.name}-${item.file.size}`]}
-                style={{ width: 120 }}
-                aria-label={`プレビュー: ${item.file.name}`}
-              />
-              <button
-                className="exclude-btn"
-                type="button"
-                onClick={() => excludeFile(files.findIndex((f) => f === item))}
-                aria-label={`除外: ${item.file.name}`}
-              >
-                除外
-              </button>
-            </div>
-          ))
+            ))}
+          </Fragment>
         )}
       </div>
       <button
