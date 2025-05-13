@@ -11,6 +11,22 @@ import React, {
 import JSZip from "jszip";
 import { ID3Writer } from "browser-id3-writer";
 import FileRow, { FileItem } from "./components/FileRow";
+import {
+  Provider,
+  defaultTheme,
+  Button,
+  TextField,
+  ActionButton,
+  Image,
+  Flex,
+  Heading,
+  View,
+  Text,
+  DropZone,
+  IllustratedMessage,
+  Content,
+  FileTrigger,
+} from "@adobe/react-spectrum";
 
 const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
@@ -203,148 +219,174 @@ const App: React.FC = () => {
   const activeFiles = files.filter((f) => !f.excluded);
 
   return (
-    <div className="container">
-      <h1>ID3タグ一括編集ツール</h1>
-      <button
-        id="drop-area"
-        ref={dropAreaRef}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
-        onDragEnter={onDragOver}
-        onDragLeave={onDragLeave}
-        style={{
-          cursor: "pointer",
-          width: "100%",
-          background: "none",
-          border: "none",
-          padding: 0,
-        }}
-        onClick={() => fileInputRef.current?.click()}
-        onKeyDown={onDropAreaKeyDown}
-        aria-label="mp3ファイルを選択"
-        type="button"
-      >
-        <p>ここにmp3ファイルをドラッグ＆ドロップ、またはクリックして選択</p>
-        <input
-          type="file"
-          ref={fileInputRef}
-          multiple
-          accept="audio/mp3, audio/mpeg"
-          style={{ display: "none" }}
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-        <span style={{ display: "block", marginTop: 12 }}>
-          <span id="fileSelect" style={{ pointerEvents: "none" }}>
-            ファイルを選択
-          </span>
-        </span>
-      </button>
-      <form id="common-tags" onSubmit={(e) => e.preventDefault()}>
-        <h2>共通ID3タグ</h2>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
-          <label style={{ flex: 1, minWidth: 180 }}>
-            アーティスト名:
-            <input
-              type="text"
-              value={artist}
-              onChange={(e) => setArtist(e.target.value)}
-            />
-          </label>
-          <label style={{ flex: 1, minWidth: 180 }}>
-            アルバム名:
-            <input
-              type="text"
-              value={album}
-              onChange={(e) => setAlbum(e.target.value)}
-            />
-          </label>
-          <label style={{ flex: 1, minWidth: 180 }}>
-            ジャンル:
-            <input
-              type="text"
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-            />
-          </label>
-          <label style={{ flex: 1, minWidth: 100 }}>
-            年:
-            <input
-              type="text"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-            />
-          </label>
-        </div>
-        <div style={{ marginTop: 16 }}>
-          <label style={{ display: "block", marginBottom: 8 }}>
-            アートワーク画像:
-            <input
-              type="file"
-              accept="image/*"
-              ref={artworkInputRef}
-              style={{ display: "inline-block", marginLeft: 8 }}
-              onChange={handleArtworkChange}
-            />
-          </label>
-          {artworkUrl && (
-            <img
-              src={artworkUrl}
-              alt="アートワークプレビュー"
-              style={{
-                maxWidth: 120,
-                maxHeight: 120,
-                borderRadius: 8,
-                border: "1px solid #ccc",
-              }}
-            />
-          )}
-        </div>
-      </form>
-      <div id="file-list">
-        {activeFiles.length === 0 ? (
-          <p style={{ color: "#888", textAlign: "center" }}>
-            ファイルが選択されていません
-          </p>
-        ) : (
-          <Fragment>
-            {activeFiles.map((item, idx) => (
-              <FileRow
-                key={`${item.file.name}-${item.file.size}`}
-                item={item}
-                idx={idx}
-                total={activeFiles.length}
-                audioUrl={audioUrls[`${item.file.name}-${item.file.size}`]}
-                onTitleChange={(i, v) =>
-                  editTitle(
-                    files.findIndex((f) => f === item),
-                    v
-                  )
+    <Provider theme={defaultTheme} colorScheme="light">
+      <View backgroundColor="static-white" padding="size-200" minHeight="100vh">
+        <Flex
+          direction="column"
+          gap="size-300"
+          alignItems="center"
+          maxWidth="700px"
+          marginX="auto"
+        >
+          <Heading level={1}>ID3タグ一括編集ツール</Heading>
+          <DropZone
+            onDrop={async (e) => {
+              const files: File[] = [];
+              for await (const item of e.items) {
+                if (
+                  item.kind === "file" &&
+                  (item.type === "audio/mp3" || item.type === "audio/mpeg")
+                ) {
+                  const file = await item.getFile();
+                  files.push(file);
                 }
-                onExclude={(i) =>
-                  excludeFile(files.findIndex((f) => f === item))
-                }
-                onDragStart={handleDragStart}
-                onDragOver={(i, e) =>
-                  handleDragOver(i, e as unknown as DragEvent<HTMLDivElement>)
-                }
-                onDrop={handleDragEnd}
-                onDragEnd={handleDragEnd}
-                isDragging={dragIndex === idx}
+              }
+              handleFiles({
+                length: files.length,
+                item: (i: number) => files[i],
+              } as unknown as FileList);
+            }}
+            maxWidth="size-3600"
+          >
+            <IllustratedMessage>
+              <Heading>mp3ファイルをドラッグ＆ドロップ、または選択</Heading>
+              <Content>
+                <FileTrigger
+                  acceptedFileTypes={["audio/mp3", "audio/mpeg"]}
+                  allowsMultiple
+                  onSelect={handleFiles}
+                >
+                  <Button variant="primary">mp3ファイルを選択</Button>
+                </FileTrigger>
+              </Content>
+            </IllustratedMessage>
+          </DropZone>
+          <form
+            id="common-tags"
+            onSubmit={(e) => e.preventDefault()}
+            style={{ width: "100%" }}
+          >
+            <Flex gap="size-200" wrap>
+              <TextField
+                label="アーティスト名"
+                value={artist}
+                onChange={setArtist}
+                width="size-3600"
               />
-            ))}
-          </Fragment>
-        )}
-      </div>
-      <button
-        id="process"
-        type="button"
-        disabled={activeFiles.length === 0}
-        onClick={processFiles}
-        style={{ marginTop: 24 }}
-      >
-        タグ付与＆一括ダウンロード
-      </button>
-    </div>
+              <TextField
+                label="アルバム名"
+                value={album}
+                onChange={setAlbum}
+                width="size-3600"
+              />
+              <TextField
+                label="ジャンル"
+                value={genre}
+                onChange={setGenre}
+                width="size-3600"
+              />
+              <TextField
+                label="年"
+                value={year}
+                onChange={setYear}
+                width="size-1600"
+              />
+            </Flex>
+            <View marginTop="size-200">
+              <Text>アートワーク画像</Text>
+              <DropZone
+                onDrop={async (e) => {
+                  for await (const item of e.items) {
+                    if (item.kind === "file") {
+                      const file = await item.getFile();
+                      setArtwork(file);
+                    }
+                  }
+                }}
+                maxWidth="size-3600"
+                marginTop="size-100"
+              >
+                <IllustratedMessage>
+                  <Heading>画像をドラッグ＆ドロップ、または選択</Heading>
+                  <Content>
+                    <FileTrigger
+                      acceptedFileTypes={["image/*"]}
+                      onSelect={(files) => {
+                        const file = files?.[0] || null;
+                        setArtwork(file);
+                      }}
+                    >
+                      <Button variant="primary">画像を選択</Button>
+                    </FileTrigger>
+                  </Content>
+                </IllustratedMessage>
+              </DropZone>
+              {artworkUrl && (
+                <Image
+                  src={artworkUrl}
+                  alt="アートワークプレビュー"
+                  width={120}
+                  height={120}
+                  UNSAFE_style={{
+                    objectFit: "cover",
+                    borderRadius: 8,
+                    marginTop: 8,
+                  }}
+                />
+              )}
+            </View>
+          </form>
+          <View width="100%">
+            {activeFiles.length === 0 ? (
+              <View paddingY="size-200" alignSelf="center">
+                <span style={{ color: "#888" }}>
+                  ファイルが選択されていません
+                </span>
+              </View>
+            ) : (
+              <Fragment>
+                {activeFiles.map((item, idx) => (
+                  <FileRow
+                    key={`${item.file.name}-${item.file.size}`}
+                    item={item}
+                    idx={idx}
+                    total={activeFiles.length}
+                    audioUrl={audioUrls[`${item.file.name}-${item.file.size}`]}
+                    onTitleChange={(i, v) =>
+                      editTitle(
+                        files.findIndex((f) => f === item),
+                        v
+                      )
+                    }
+                    onExclude={(i) =>
+                      excludeFile(files.findIndex((f) => f === item))
+                    }
+                    onDragStart={handleDragStart}
+                    onDragOver={(i, e) =>
+                      handleDragOver(
+                        i,
+                        e as unknown as DragEvent<HTMLDivElement>
+                      )
+                    }
+                    onDrop={handleDragEnd}
+                    onDragEnd={handleDragEnd}
+                    isDragging={dragIndex === idx}
+                  />
+                ))}
+              </Fragment>
+            )}
+          </View>
+          <Button
+            variant="cta"
+            isDisabled={activeFiles.length === 0}
+            onPress={processFiles}
+            width="100%"
+          >
+            タグ付与＆一括ダウンロード
+          </Button>
+        </Flex>
+      </View>
+    </Provider>
   );
 };
 
