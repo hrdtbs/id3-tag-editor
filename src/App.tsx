@@ -242,6 +242,7 @@ const App: React.FC = () => {
 						<TextField
 							label="年"
 							name="year"
+							defaultValue={String(new Date().getFullYear())}
 							width="size-1600"
 						/>
 					</Flex>
