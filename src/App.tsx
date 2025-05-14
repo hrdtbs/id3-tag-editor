@@ -14,12 +14,7 @@ import {
 import { ID3Writer } from "browser-id3-writer";
 import JSZip from "jszip";
 import type React from "react";
-import {
-	Fragment,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import FileRow, { type FileItem } from "./components/FileRow";
 
 const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
@@ -45,7 +40,9 @@ const App: React.FC = () => {
 			.filter(
 				(file) =>
 					(file.type === "audio/mp3" || file.type === "audio/mpeg") &&
-					!files.some((f) => f.file.name === file.name && f.file.size === file.size),
+					!files.some(
+						(f) => f.file.name === file.name && f.file.size === file.size,
+					),
 			)
 			.map((file) => ({
 				file,
@@ -203,7 +200,10 @@ const App: React.FC = () => {
 										total={activeFiles.length}
 										audioUrl={audioUrls[`${item.file.name}-${item.file.size}`]}
 										onTitleChange={(i, v) =>
-											editTitle(files.findIndex((f) => f === item), v)
+											editTitle(
+												files.findIndex((f) => f === item),
+												v,
+											)
 										}
 										onExclude={(i) =>
 											excludeFile(files.findIndex((f) => f === item))
@@ -220,81 +220,85 @@ const App: React.FC = () => {
 					</View>
 				</Flex>
 				<form id="common-tags" action={processFiles}>
-					<Flex gap="size-200" wrap>
-						<TextField
-							label="アーティスト名"
-							name="artist"
-							autoComplete="on"
-							width="size-3600"
-						/>
-						<TextField
-							label="アルバム名"
-							name="album"
-							autoComplete="on"
-							width="size-3600"
-						/>
-						<TextField
-							label="ジャンル"
-							name="genre"
-							autoComplete="on"
-							width="size-3600"
-						/>
-						<TextField
-							label="年"
-							name="year"
-							defaultValue={String(new Date().getFullYear())}
-							width="size-1600"
-						/>
-					</Flex>
-					<View marginTop="size-200">
-						<Text>アートワーク画像</Text>
-						<DropZone
-							onDrop={async (e) => {
-								for await (const item of e.items) {
-									if (item.kind === "file") {
-										const file = await item.getFile();
-										handleArtworkChange(file);
-									}
-								}
-							}}
-							maxWidth="size-3600"
-							marginTop="size-100"
-						>
-							<IllustratedMessage>
-								<Heading>画像をドラッグ＆ドロップ</Heading>
-								<Content>
-									<FileTrigger
-										acceptedFileTypes={["image/*"]}
-										onSelect={(files) => {
-											const file = files?.[0] || null;
-											handleArtworkChange(file);
-										}}
-									>
-										<Button variant="primary">画像を選択</Button>
-									</FileTrigger>
-								</Content>
-							</IllustratedMessage>
-						</DropZone>
-						{artworkPreview && (
-							<Image
-								src={artworkPreview}
-								alt="アートワークプレビュー"
-								width={120}
-								height={120}
-								objectFit="cover"
-								UNSAFE_style={{
-									borderRadius: 8,
-								}}
+					<Flex direction="column" gap="size-400">
+						<Flex gap="size-200" wrap>
+							<TextField
+								label="アーティスト名"
+								name="artist"
+								autoComplete="on"
+								width="size-3600"
 							/>
-						)}
-					</View>
-					<Button
-						variant="cta"
-						type="submit"
-						isDisabled={activeFiles.length === 0}
-					>
-						タグ付与＆一括ダウンロード
-					</Button>
+							<TextField
+								label="アルバム名"
+								name="album"
+								autoComplete="on"
+								width="size-3600"
+							/>
+							<TextField
+								label="ジャンル"
+								name="genre"
+								autoComplete="on"
+								width="size-3600"
+							/>
+							<TextField
+								label="年"
+								name="year"
+								defaultValue={String(new Date().getFullYear())}
+								width="size-1600"
+							/>
+							<View marginTop="size-200">
+								<Text>アートワーク画像</Text>
+								<DropZone
+									onDrop={async (e) => {
+										for await (const item of e.items) {
+											if (item.kind === "file") {
+												const file = await item.getFile();
+												handleArtworkChange(file);
+											}
+										}
+									}}
+									maxWidth="size-3600"
+									marginTop="size-100"
+								>
+									<IllustratedMessage>
+										<Heading>画像をドラッグ＆ドロップ</Heading>
+										<Content>
+											<FileTrigger
+												acceptedFileTypes={["image/*"]}
+												onSelect={(files) => {
+													const file = files?.[0] || null;
+													handleArtworkChange(file);
+												}}
+											>
+												<Button variant="primary">画像を選択</Button>
+											</FileTrigger>
+										</Content>
+									</IllustratedMessage>
+								</DropZone>
+								{artworkPreview && (
+									<Image
+										src={artworkPreview}
+										alt="アートワークプレビュー"
+										width={120}
+										height={120}
+										objectFit="cover"
+										UNSAFE_style={{
+											borderRadius: 8,
+										}}
+									/>
+								)}
+							</View>
+						</Flex>
+
+						<Button
+							variant="cta"
+							type="submit"
+							width="100%"
+							isDisabled={activeFiles.length === 0}
+						>
+							タグ付与＆一括ダウンロード
+						</Button>
+					</Flex>
 				</form>
 			</Flex>
 		</View>
