@@ -16,8 +16,8 @@ import JSZip from "jszip";
 import type React from "react";
 import {
 	Fragment,
-	useCallback,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 import FileRow, { type FileItem } from "./components/FileRow";
@@ -26,19 +26,9 @@ const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
 const App: React.FC = () => {
 	const [files, setFiles] = useState<FileItem[]>([]);
-	const [formState, setFormState] = useState({
-		artist: "",
-		album: "",
-		genre: "",
-		year: String(new Date().getFullYear()),
-		artwork: null as File | null,
-	});
+	const [artworkPreview, setArtworkPreview] = useState<string>("");
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-	const artworkUrl = useMemo(() => {
-		if (!formState.artwork) return "";
-		return URL.createObjectURL(formState.artwork);
-	}, [formState.artwork]);
+	const artworkFileRef = useRef<File | null>(null);
 
 	const audioUrls = useMemo(() => {
 		const urls: { [key: string]: string } = {};
@@ -49,88 +39,98 @@ const App: React.FC = () => {
 		return urls;
 	}, [files]);
 
-	const handleFiles = useCallback(
-		(selectedFiles: File[] | FileList | null) => {
-			if (!selectedFiles) return;
-			const newFiles = Array.from(selectedFiles)
-				.filter(
-					(file) =>
-						(file.type === "audio/mp3" || file.type === "audio/mpeg") &&
-						!files.some(
-							(f) => f.file.name === file.name && f.file.size === file.size,
-						),
-				)
-				.map((file) => ({
-					file,
-					excluded: false,
-					title: getBaseName(file.name),
-				}));
-			setFiles((prev) => [...prev, ...newFiles]);
-		},
-		[files],
-	);
+	function handleFiles(selectedFiles: File[] | FileList | null) {
+		if (!selectedFiles) return;
+		const newFiles = Array.from(selectedFiles)
+			.filter(
+				(file) =>
+					(file.type === "audio/mp3" || file.type === "audio/mpeg") &&
+					!files.some((f) => f.file.name === file.name && f.file.size === file.size),
+			)
+			.map((file) => ({
+				file,
+				excluded: false,
+				title: getBaseName(file.name),
+			}));
+		setFiles((prev) => [...prev, ...newFiles]);
+	}
 
-	const excludeFile = useCallback((idx: number) => {
+	function excludeFile(idx: number) {
 		setFiles((prev) =>
 			prev.map((f, i) => (i === idx ? { ...f, excluded: true } : f)),
 		);
-	}, []);
+	}
 
-	const editTitle = useCallback((idx: number, value: string) => {
+	function editTitle(idx: number, value: string) {
 		setFiles((prev) =>
 			prev.map((f, i) => (i === idx ? { ...f, title: value } : f)),
 		);
-	}, []);
+	}
 
-	const handleDragStart = useCallback((idx: number) => setDragIndex(idx), []);
-	const handleDragOver = useCallback(
-		(idx: number, e: React.DragEvent<HTMLDivElement>) => {
-			e.preventDefault();
-			if (dragIndex === null || dragIndex === idx) return;
-			setFiles((prev) => {
-				const arr = [...prev];
-				const activeList = arr.filter((f) => !f.excluded);
-				const dragItem = activeList[dragIndex];
-				const dropItem = activeList[idx];
-				const dragGlobalIdx = arr.findIndex((f) => f === dragItem);
-				const dropGlobalIdx = arr.findIndex((f) => f === dropItem);
-				arr.splice(dragGlobalIdx, 1);
-				arr.splice(dropGlobalIdx, 0, dragItem);
-				return arr;
-			});
-			setDragIndex(idx);
-		},
-		[dragIndex],
-	);
-	const handleDragEnd = useCallback(() => setDragIndex(null), []);
+	function handleDragStart(idx: number) {
+		setDragIndex(idx);
+	}
+	function handleDragOver(idx: number, e: React.DragEvent<HTMLDivElement>) {
+		e.preventDefault();
+		if (dragIndex === null || dragIndex === idx) return;
+		setFiles((prev) => {
+			const arr = [...prev];
+			const activeList = arr.filter((f) => !f.excluded);
+			const dragItem = activeList[dragIndex];
+			const dropItem = activeList[idx];
+			const dragGlobalIdx = arr.findIndex((f) => f === dragItem);
+			const dropGlobalIdx = arr.findIndex((f) => f === dropItem);
+			arr.splice(dragGlobalIdx, 1);
+			arr.splice(dropGlobalIdx, 0, dragItem);
+			return arr;
+		});
+		setDragIndex(idx);
+	}
+	function handleDragEnd() {
+		setDragIndex(null);
+	}
 
-	const handleFormChange = useCallback((key: keyof typeof formState, value: string | File | null) => {
-		setFormState((prev) => ({ ...prev, [key]: value }));
-	}, []);
+	// artwork画像のプレビュー管理
+	const handleArtworkChange = (file: File | null) => {
+		artworkFileRef.current = file;
+		if (file) {
+			const url = URL.createObjectURL(file);
+			setArtworkPreview(url);
+		} else {
+			setArtworkPreview("");
+		}
+	};
 
-	const processFiles = useCallback(async () => {
+	// formDataを使ったタグ付与＆一括ダウンロード
+	async function processFiles(formData: FormData) {
+		const artist = formData.get("artist") as string;
+		const album = formData.get("album") as string;
+		const genre = formData.get("genre") as string;
+		const year = formData.get("year") as string;
+		const artworkFile = artworkFileRef.current;
+
 		const zip = new JSZip();
 		let trackNo = 1;
 		let artworkBuffer: ArrayBuffer | null = null;
-		if (formState.artwork) {
-			artworkBuffer = await formState.artwork.arrayBuffer();
+		if (artworkFile) {
+			artworkBuffer = await artworkFile.arrayBuffer();
 		}
 		for (const item of files) {
 			if (item.excluded) continue;
 			const arrayBuffer = await item.file.arrayBuffer();
 			const writer = new ID3Writer(arrayBuffer);
 			writer.setFrame("TIT2", item.title || getBaseName(item.file.name));
-			if (formState.artist) writer.setFrame("TPE1", [formState.artist]);
-			if (formState.album) writer.setFrame("TALB", formState.album);
-			if (formState.genre) writer.setFrame("TCON", [formState.genre]);
-			if (formState.year && !Number.isNaN(Number(formState.year)))
-				writer.setFrame("TYER", Number(formState.year));
+			if (artist) writer.setFrame("TPE1", [artist]);
+			if (album) writer.setFrame("TALB", album);
+			if (genre) writer.setFrame("TCON", [genre]);
+			if (year && !Number.isNaN(Number(year)))
+				writer.setFrame("TYER", Number(year));
 			writer.setFrame("TRCK", String(trackNo));
-			if (formState.artwork && artworkBuffer) {
+			if (artworkFile && artworkBuffer) {
 				writer.setFrame("APIC", {
 					type: 3,
 					data: artworkBuffer,
-					description: formState.artwork.name,
+					description: artworkFile.name,
 				});
 			}
 			writer.addTag();
@@ -143,7 +143,7 @@ const App: React.FC = () => {
 		a.href = URL.createObjectURL(content);
 		a.download = "tagged_mp3s.zip";
 		a.click();
-	}, [files, formState.artist, formState.album, formState.genre, formState.year, formState.artwork]);
+	}
 
 	const activeFiles = files.filter((f) => !f.excluded);
 
@@ -159,7 +159,6 @@ const App: React.FC = () => {
 					<Heading level={1}>ID3タグ一括編集ツール</Heading>
 					<DropZone
 						onDrop={async (e) => {
-							console.log(e.items)
 							const files: File[] = [];
 							for await (const item of e.items) {
 								if (
@@ -204,10 +203,7 @@ const App: React.FC = () => {
 										total={activeFiles.length}
 										audioUrl={audioUrls[`${item.file.name}-${item.file.size}`]}
 										onTitleChange={(i, v) =>
-											editTitle(
-												files.findIndex((f) => f === item),
-												v,
-											)
+											editTitle(files.findIndex((f) => f === item), v)
 										}
 										onExclude={(i) =>
 											excludeFile(files.findIndex((f) => f === item))
@@ -223,40 +219,29 @@ const App: React.FC = () => {
 						)}
 					</View>
 				</Flex>
-				<form
-					id="common-tags"
-					onSubmit={(e) => e.preventDefault()}
-				>
+				<form id="common-tags" action={processFiles}>
 					<Flex gap="size-200" wrap>
 						<TextField
 							label="アーティスト名"
-							value={formState.artist}
 							name="artist"
 							autoComplete="on"
-							onChange={(v) => handleFormChange("artist", v)}
 							width="size-3600"
 						/>
 						<TextField
 							label="アルバム名"
-							value={formState.album}
 							name="album"
 							autoComplete="on"
-							onChange={(v) => handleFormChange("album", v)}
 							width="size-3600"
 						/>
 						<TextField
 							label="ジャンル"
-							value={formState.genre}
 							name="genre"
 							autoComplete="on"
-							onChange={(v) => handleFormChange("genre", v)}
 							width="size-3600"
 						/>
 						<TextField
 							label="年"
-							value={formState.year}
 							name="year"
-							onChange={(v) => handleFormChange("year", v)}
 							width="size-1600"
 						/>
 					</Flex>
@@ -267,7 +252,7 @@ const App: React.FC = () => {
 								for await (const item of e.items) {
 									if (item.kind === "file") {
 										const file = await item.getFile();
-										handleFormChange("artwork", file);
+										handleArtworkChange(file);
 									}
 								}
 							}}
@@ -281,7 +266,7 @@ const App: React.FC = () => {
 										acceptedFileTypes={["image/*"]}
 										onSelect={(files) => {
 											const file = files?.[0] || null;
-											handleFormChange("artwork", file);
+											handleArtworkChange(file);
 										}}
 									>
 										<Button variant="primary">画像を選択</Button>
@@ -289,9 +274,9 @@ const App: React.FC = () => {
 								</Content>
 							</IllustratedMessage>
 						</DropZone>
-						{artworkUrl && (
+						{artworkPreview && (
 							<Image
-								src={artworkUrl}
+								src={artworkPreview}
 								alt="アートワークプレビュー"
 								width={120}
 								height={120}
@@ -302,15 +287,14 @@ const App: React.FC = () => {
 							/>
 						)}
 					</View>
+					<Button
+						variant="cta"
+						type="submit"
+						isDisabled={activeFiles.length === 0}
+					>
+						タグ付与＆一括ダウンロード
+					</Button>
 				</form>
-
-				<Button
-					variant="cta"
-					isDisabled={activeFiles.length === 0}
-					onPress={processFiles}
-				>
-					タグ付与＆一括ダウンロード
-				</Button>
 			</Flex>
 		</View>
 	);
