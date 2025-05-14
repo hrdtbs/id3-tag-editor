@@ -15,7 +15,6 @@ import { ID3Writer } from "browser-id3-writer";
 import JSZip from "jszip";
 import type React from "react";
 import {
-	type DragEvent,
 	Fragment,
 	useCallback,
 	useMemo,
@@ -36,13 +35,11 @@ const App: React.FC = () => {
 	});
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
 
-	// artworkUrlはuseMemoで導出
 	const artworkUrl = useMemo(() => {
 		if (!formState.artwork) return "";
 		return URL.createObjectURL(formState.artwork);
 	}, [formState.artwork]);
 
-	// audioUrlsもuseMemoで導出
 	const audioUrls = useMemo(() => {
 		const urls: { [key: string]: string } = {};
 		for (const item of files) {
@@ -52,7 +49,6 @@ const App: React.FC = () => {
 		return urls;
 	}, [files]);
 
-	// ファイル追加
 	const handleFiles = useCallback(
 		(selectedFiles: File[] | FileList | null) => {
 			if (!selectedFiles) return;
@@ -74,24 +70,21 @@ const App: React.FC = () => {
 		[files],
 	);
 
-	// 除外
 	const excludeFile = useCallback((idx: number) => {
 		setFiles((prev) =>
 			prev.map((f, i) => (i === idx ? { ...f, excluded: true } : f)),
 		);
 	}, []);
 
-	// 曲名編集
 	const editTitle = useCallback((idx: number, value: string) => {
 		setFiles((prev) =>
 			prev.map((f, i) => (i === idx ? { ...f, title: value } : f)),
 		);
 	}, []);
 
-	// 並び替えロジック
 	const handleDragStart = useCallback((idx: number) => setDragIndex(idx), []);
 	const handleDragOver = useCallback(
-		(idx: number, e: DragEvent<HTMLDivElement>) => {
+		(idx: number, e: React.DragEvent<HTMLDivElement>) => {
 			e.preventDefault();
 			if (dragIndex === null || dragIndex === idx) return;
 			setFiles((prev) => {
@@ -111,12 +104,10 @@ const App: React.FC = () => {
 	);
 	const handleDragEnd = useCallback(() => setDragIndex(null), []);
 
-	// フォーム入力変更
 	const handleFormChange = useCallback((key: keyof typeof formState, value: string | File | null) => {
 		setFormState((prev) => ({ ...prev, [key]: value }));
 	}, []);
 
-	// タグ付与＆一括ダウンロード
 	const processFiles = useCallback(async () => {
 		const zip = new JSZip();
 		let trackNo = 1;
