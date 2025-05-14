@@ -290,7 +290,7 @@ const App: React.FC = () => {
 							marginTop="size-100"
 						>
 							<IllustratedMessage>
-								<Heading>画像をドラッグ＆ドロップ、または選択</Heading>
+								<Heading>画像をドラッグ＆ドロップ</Heading>
 								<Content>
 									<FileTrigger
 										acceptedFileTypes={["image/*"]}
