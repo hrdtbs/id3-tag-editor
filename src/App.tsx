@@ -322,7 +322,6 @@ const App: React.FC = () => {
 					variant="cta"
 					isDisabled={activeFiles.length === 0}
 					onPress={processFiles}
-					width="100%"
 				>
 					タグ付与＆一括ダウンロード
 				</Button>
