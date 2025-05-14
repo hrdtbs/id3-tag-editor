@@ -37,7 +37,6 @@ const FileRow = memo(
 	}: FileRowProps) => (
 		<div
 			style={{
-				background: "#fff",
 				borderRadius: 6,
 				border: "1px solid #e1e1e1",
 				margin: "8px 0",

@@ -146,7 +146,6 @@ const App: React.FC = () => {
 
 	return (
 		<View
-			backgroundColor="static-white"
 			padding="size-200"
 			paddingBottom="size-2000"
 			minHeight="100vh"
