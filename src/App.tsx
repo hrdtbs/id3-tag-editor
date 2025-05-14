@@ -189,7 +189,7 @@ const App: React.FC = () => {
 						maxWidth="size-3600"
 					>
 						<IllustratedMessage>
-							<Heading>mp3ファイルをドラッグ＆ドロップ、または選択</Heading>
+							<Heading>mp3ファイルをドラッグ＆ドロップ</Heading>
 							<Content>
 								<FileTrigger
 									acceptedFileTypes={["audio/mp3", "audio/mpeg"]}
@@ -227,12 +227,7 @@ const App: React.FC = () => {
 											excludeFile(files.findIndex((f) => f === item))
 										}
 										onDragStart={handleDragStart}
-										onDragOver={(i, e) =>
-											handleDragOver(
-												i,
-												e as unknown as DragEvent<HTMLDivElement>,
-											)
-										}
+										onDragOver={handleDragOver}
 										onDrop={handleDragEnd}
 										onDragEnd={handleDragEnd}
 										isDragging={dragIndex === idx}
