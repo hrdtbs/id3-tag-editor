@@ -39,7 +39,7 @@ const App: React.FC = () => {
 
 	// ファイル追加
 	const handleFiles = useCallback(
-		(selectedFiles: FileList | null) => {
+		(selectedFiles: File[] | FileList | null) => {
 			if (!selectedFiles) return;
 			const newFiles = Array.from(selectedFiles)
 				.filter(
@@ -173,6 +173,7 @@ const App: React.FC = () => {
 					<Heading level={1}>ID3タグ一括編集ツール</Heading>
 					<DropZone
 						onDrop={async (e) => {
+							console.log(e.items)
 							const files: File[] = [];
 							for await (const item of e.items) {
 								if (
@@ -183,10 +184,7 @@ const App: React.FC = () => {
 									files.push(file);
 								}
 							}
-							handleFiles({
-								length: files.length,
-								item: (i: number) => files[i],
-							} as unknown as FileList);
+							handleFiles(files);
 						}}
 						maxWidth="size-3600"
 					>
