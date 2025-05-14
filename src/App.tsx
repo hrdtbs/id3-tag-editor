@@ -240,7 +240,6 @@ const App: React.FC = () => {
 				<form
 					id="common-tags"
 					onSubmit={(e) => e.preventDefault()}
-					style={{ width: "100%" }}
 				>
 					<Flex gap="size-200" wrap>
 						<TextField
