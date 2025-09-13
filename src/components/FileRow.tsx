@@ -1,4 +1,4 @@
-import { Button, Flex, Text, TextField, View } from "@adobe/react-spectrum";
+import { Button, Flex, Grid, Text, TextField, View, Icon } from "@adobe/react-spectrum";
 import { memo } from "react";
 
 export interface FileItem {
@@ -51,45 +51,49 @@ const FileRow = memo(
 			onDragEnd={onDragEnd}
 			aria-label={`ファイル${idx + 1} / ${total}`}
 		>
-			<Flex alignItems="center" gap="size-200">
-				<Text>{idx + 1}</Text>
-				<Text
-					flex="1"
-					UNSAFE_style={{
-						minWidth: 0,
-						overflow: "hidden",
-						textOverflow: "ellipsis",
-						whiteSpace: "nowrap",
-					}}
-				>
-					{item.file.name}
-				</Text>
-				<TextField
-					label="曲名"
-					labelPosition="side"
-					value={item.title}
-					onChange={(v) => onTitleChange(idx, v)}
-					width="size-2400"
-					aria-label={`曲名（${item.file.name}）`}
-				/>
-				<View minWidth="120px">
-					<audio
-						controls
-						src={audioUrl}
-						style={{ width: "100%" }}
-						aria-label={`プレビュー: ${item.file.name}`}
+			<Grid>
+				<Flex alignItems="center" gap="size-200">
+					<Icon size="XL">
+						<svg width="18" height="18" viewBox="0 0 18 18">
+							<title>ドラッグハンドル</title>
+							<circle fill="#464646" cx="7" cy="13" r="1"/>
+							<circle fill="#464646" cx="7" cy="10" r="1"/>
+							<circle fill="#464646" cx="7" cy="7" r="1"/>
+							<circle fill="#464646" cx="7" cy="4" r="1"/>
+							<circle fill="#464646" cx="10" cy="13" r="1"/>
+							<circle fill="#464646" cx="10" cy="10" r="1"/>
+							<circle fill="#464646" cx="10" cy="7" r="1"/>
+							<circle fill="#464646" cx="10" cy="4" r="1"/>
+						</svg>
+					</Icon>
+					<Text>{idx + 1}</Text>
+					<TextField
+						labelPosition="side"
+						value={item.title}
+						onChange={(v) => onTitleChange(idx, v)}
+						width="100%"
+						aria-label={`曲名（${item.file.name}）`}
+					/>
+					<View minWidth="120px">
+						<audio
+							controls
+							src={audioUrl}
+							style={{ width: "100%" }}
+							aria-label={`プレビュー: ${item.file.name}`}
+						>
+							<track kind="captions" label="" src="" default />
+						</audio>
+					</View>
+					<Button
+						variant="negative"
+						onPress={() => onExclude(idx)}
+						aria-label={`除外: ${item.file.name}`}
 					>
-						<track kind="captions" label="" src="" default />
-					</audio>
-				</View>
-				<Button
-					variant="negative"
-					onPress={() => onExclude(idx)}
-					aria-label={`除外: ${item.file.name}`}
-				>
-					除外
-				</Button>
-			</Flex>
+						除外
+					</Button>
+				</Flex>
+			</Grid>
+
 		</div>
 	),
 );

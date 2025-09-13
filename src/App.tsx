@@ -157,7 +157,7 @@ const App: React.FC = () => {
 							1. まとめてタグを付けたい音声ファイルをアップロード
 						</Heading>
 						<Text>
-							*MP3形式以外のファイルは自動的にMP3形式に変換されます。
+							MP3形式以外のファイルは自動的にMP3形式に変換されますが、変換処理には時間がかかる場合があります。
 						</Text>
 						<DropZone
 							onDrop={async (e) => {
@@ -193,6 +193,10 @@ const App: React.FC = () => {
 					</section>
 					<section>
 						<Heading level={2}>2. 曲名とトラック番号を確認</Heading>
+						<Text>
+							曲名は自由に編集できます。トラック番号は自動的に連番で振られます。
+							トラック番号を変更したい場合は、ドラッグ＆ドロップで順番を入れ替えてください。
+						</Text>
 						<View width="100%">
 							{activeFiles.length === 0 ? (
 								<View paddingY="size-200" alignSelf="center">
