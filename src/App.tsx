@@ -16,6 +16,7 @@ import JSZip from "jszip";
 import type React from "react";
 import { Fragment, useMemo, useRef, useState } from "react";
 import FileRow, { type FileItem } from "./components/FileRow";
+import { fileToMp3, isMp3Supported } from "./utils/converter";
 
 const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
@@ -44,11 +45,13 @@ const App: React.FC = () => {
 						(f) => f.file.name === file.name && f.file.size === file.size,
 					),
 			)
-			.map((file) => ({
-				file,
-				excluded: false,
-				title: getBaseName(file.name),
-			}));
+			.map((file) => {
+				return {
+					file,
+					excluded: false,
+					title: getBaseName(file.name),
+				};
+			});
 		setFiles((prev) => [...prev, ...newFiles]);
 	}
 
@@ -132,7 +135,7 @@ const App: React.FC = () => {
 			}
 			writer.addTag();
 			const taggedBlob = writer.getBlob();
-			zip.file(item.file.name, taggedBlob);
+			zip.file(`${item.title}.mp3`, taggedBlob);
 			trackNo++;
 		}
 		const content = await zip.generateAsync({ type: "blob" });
@@ -145,27 +148,30 @@ const App: React.FC = () => {
 	const activeFiles = files.filter((f) => !f.excluded);
 
 	return (
-		<View
-			padding="size-200"
-			paddingBottom="size-2000"
-			minHeight="100vh"
-		>
+		<View padding="size-200" paddingBottom="size-2000" minHeight="100vh">
 			<Flex direction="column" gap="size-600" maxWidth="700px" marginX="auto">
 				<Flex direction="column" gap="size-200">
 					<Heading level={1}>まとめてMP3タグエディター</Heading>
 					<section>
 						<Heading level={2}>
-							1. まとめてタグを付けたいMP3ファイルをアップロード
+							1. まとめてタグを付けたい音声ファイルをアップロード
 						</Heading>
+						<Text>
+							{isMp3Supported
+								? "*このブラウザはMP3形式以外のファイルアップロードに対応しています。"
+								: "このブラウザではMP3形式以外のファイルアップロードに対応していません。"}
+						</Text>
 						<DropZone
 							onDrop={async (e) => {
 								const files: File[] = [];
 								for await (const item of e.items) {
-									if (
-										item.kind === "file" &&
-										(item.type === "audio/mp3" || item.type === "audio/mpeg")
-									) {
-										const file = await item.getFile();
+									if (item.kind === "file") {
+										const originalFile = await item.getFile();
+										const buffer = await fileToMp3(originalFile);
+										if (buffer === null) continue;
+										const file = new File([buffer], originalFile.name, {
+											type: "audio/mp3",
+										});
 										files.push(file);
 									}
 								}
@@ -174,14 +180,14 @@ const App: React.FC = () => {
 							maxWidth="size-3600"
 						>
 							<IllustratedMessage>
-								<Heading>mp3ファイルをドラッグ＆ドロップ</Heading>
+								<Heading>音声ファイルをドラッグ＆ドロップ</Heading>
 								<Content>
 									<FileTrigger
 										acceptedFileTypes={["audio/mp3", "audio/mpeg"]}
 										allowsMultiple
 										onSelect={handleFiles}
 									>
-										<Button variant="primary">mp3ファイルを選択</Button>
+										<Button variant="primary">音声ファイルを選択</Button>
 									</FileTrigger>
 								</Content>
 							</IllustratedMessage>

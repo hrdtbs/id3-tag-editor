@@ -13,8 +13,10 @@
 	},
 	"dependencies": {
 		"@adobe/react-spectrum": "^3.41.0",
+		"@mediabunny/mp3-encoder": "^1.15.1",
 		"browser-id3-writer": "^6.2.0",
 		"jszip": "^3.10.1",
+		"mediabunny": "^1.15.1",
 		"react": "^19.1.0",
 		"react-dom": "^19.1.0"
 	},
