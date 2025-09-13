@@ -10,9 +10,7 @@ import {
 	canEncodeAudio,
 } from "mediabunny";
 
-export const isMp3Supported = await canEncodeAudio("mp3");
-
-if (!isMp3Supported) {
+if (!await canEncodeAudio("mp3")) {
 	registerMp3Encoder();
 }
 

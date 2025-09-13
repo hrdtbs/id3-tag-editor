@@ -16,7 +16,7 @@ import JSZip from "jszip";
 import type React from "react";
 import { Fragment, useMemo, useRef, useState } from "react";
 import FileRow, { type FileItem } from "./components/FileRow";
-import { fileToMp3, isMp3Supported } from "./utils/converter";
+import { fileToMp3 } from "./utils/converter";
 
 const getBaseName = (filename: string) => filename.replace(/\.[^.]+$/, "");
 
@@ -157,9 +157,7 @@ const App: React.FC = () => {
 							1. まとめてタグを付けたい音声ファイルをアップロード
 						</Heading>
 						<Text>
-							{isMp3Supported
-								? "*このブラウザはMP3形式以外のファイルアップロードに対応しています。"
-								: "このブラウザではMP3形式以外のファイルアップロードに対応していません。"}
+							*MP3形式以外のファイルは自動的にMP3形式に変換されます。
 						</Text>
 						<DropZone
 							onDrop={async (e) => {
